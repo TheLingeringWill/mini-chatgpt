@@ -1,0 +1,207 @@
+openapi: 3.0.0
+info:
+  title: Mini ChatGPT API Contract
+  description: API contract for minimal ChatGPT web application
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Development (Next.js frontend)
+  - url: http://localhost:8080
+    description: Mock LLM backend
+
+paths:
+  /api/chat:
+    post:
+      summary: Send message and get LLM completion
+      description: |
+        Proxies request to mock-llm backend. This is a Next.js API route that:
+        - Receives user message from frontend
+        - Forwards to mock-llm service
+        - Returns completion or error
+
+        Frontend handles retry logic (up to 3 attempts on 500 errors) and 12s timeout.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                  description: User's message content
+                  example: "What is the capital of France?"
+
+      responses:
+        '200':
+          description: Successful completion from LLM
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - completion
+                properties:
+                  completion:
+                    type: string
+                    description: LLM's response text
+                    example: "The capital of France is Paris."
+
+        '400':
+          description: Invalid request (empty message, too long, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Message cannot be empty"
+
+        '500':
+          description: Backend service error (should trigger retry in frontend)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Service temporarily unavailable"
+
+        '504':
+          description: Gateway timeout (backend took too long)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Request timeout"
+
+  /complete:
+    post:
+      summary: Mock LLM completion endpoint
+      description: |
+        Backend mock-llm service endpoint. This is called by the Next.js API route.
+
+        **Simulated Behavior** (from mock-llm server):
+        - 10% chance of hanging (no response)
+        - 20% chance of returning HTTP 500 error
+        - Random response delay between 500-2000ms
+        - Mirrors back input with "Response: " prefix
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: Message content to complete
+                  example: "Hello, how are you?"
+
+      responses:
+        '200':
+          description: Successful completion
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - completion
+                properties:
+                  completion:
+                    type: string
+                    example: "Response: Hello, how are you?"
+
+        '500':
+          description: Simulated error (20% occurrence rate)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                    example: "Simulated server error"
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "An error occurred"
+
+    Message:
+      type: object
+      required:
+        - id
+        - role
+        - content
+        - timestamp
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique message identifier
+        role:
+          type: string
+          enum: [user, assistant]
+          description: Message sender
+        content:
+          type: string
+          maxLength: 4000
+          description: Message text content
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+        status:
+          type: string
+          enum: [sending, sent, error, cancelled]
+          description: Message delivery status
+
+    Conversation:
+      type: object
+      required:
+        - id
+        - title
+        - messages
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique conversation identifier
+        title:
+          type: string
+          pattern: '^Conversation \d+$'
+          description: Auto-generated conversation title
+          example: "Conversation 1"
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          description: Ordered list of messages (oldest first)
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix timestamp when conversation was created
+
+tags:
+  - name: Chat
+    description: Chat completion endpoints

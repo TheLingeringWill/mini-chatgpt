@@ -63,3 +63,6 @@ The mock-llm server (`mock-llm/server.js:10-20`) intentionally simulates real-wo
 - `compose.yml` - Docker Compose configuration for both services
 - `frontend/Dockerfile` - Multi-stage build using standalone Next.js output
 - `mock-llm/Dockerfile` - Simple Node.js production container
+
+## Recent Changes
+- 001-chatgpt-web-app: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
