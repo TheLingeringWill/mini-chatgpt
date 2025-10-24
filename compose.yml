@@ -1,0 +1,16 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mock-llm
+    restart: unless-stopped
+
+  mock-llm:
+    build:
+      context: ./mock-llm
+      dockerfile: Dockerfile
+    restart: unless-stopped
